@@ -5,8 +5,7 @@ import com.exec.repository.ReportRepository;
 
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import com.exec.model.Key;
 import com.exec.model.Report;
 
@@ -26,23 +25,38 @@ public class ReportService {
     public void addReport(Report Report) {
         reportRepository.insert(Report);
     }
-    public List<String> publicKeys() {
+    public void addKey(Key kk) {
+        keyRepository.insert(kk);
+    }
+    public List<Key> getKeys() {
+        // List<String> myList = new ArrayList<String>();
+        // for(Key key: keyRepository.findAll()){
+        //     myList.add(key.getPublicKey());
+        // }
+        return keyRepository.findAll();
+        // return myList;
+
+    }
+
+    public List<String> getPublicKeys() {
         List<String> myList = new ArrayList<String>();
         for(Key key: keyRepository.findAll()){
             myList.add(key.getPublicKey());
         }
-        // for i  keyRepository.findAll();
+        // return keyRepository.findAll();
         return myList;
 
     }
     
-    public Key getPriv(String roll ) {
-        return keyRepository.findById(roll).get();
 
-    }
-
-    public List<Report> getAllReports() {
-        return reportRepository.findAll();
+    public List<Map<String, String>> getAllReports() {
+        List< Map<String, String> > report_messages = new ArrayList< Map<String, String> >();
+        for(Report report: reportRepository.findAll()){
+            Map<String, String> report_message = new HashMap<String, String>();
+            report_message.put("message", report.message);
+            report_messages.add(report_message);
+        }
+        return report_messages;
     }
 
 }

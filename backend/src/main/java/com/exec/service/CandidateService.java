@@ -1,15 +1,12 @@
 package com.exec.service;
 
-import java.util.ArrayList;
-
 // import javax.management.RuntimeErrorException;
 
 import com.exec.model.Candidate;
+import com.exec.model.CandidateInfo;
 import com.exec.model.GBM;
-import com.exec.model.Admin;
 import com.exec.repository.CandidateRepository;
 import com.exec.repository.GBMRepository;
-import com.exec.repository.AdminRepository;
 import java.util.*;
 
 import org.springframework.context.annotation.Lazy;
@@ -21,20 +18,14 @@ public class CandidateService {
 
     private final CandidateRepository candidateRepository;
     private final GBMRepository gbmRepository;
-    private final AdminRepository adminRepository;
 
-    public CandidateService(CandidateRepository candidateRepository, GBMRepository gbmRepository,AdminRepository adminRepository){
+    public CandidateService(CandidateRepository candidateRepository, GBMRepository gbmRepository){
         this.candidateRepository = candidateRepository;
         this.gbmRepository = gbmRepository;
-        this.adminRepository=adminRepository;
     }
 
-    public void fileNomination(Candidate candidate){
-        //candidateRepository.insert(candidate);
-        Admin admin;
-        admin=adminRepository.findAll().get(0);
-        admin.CandidateRequests.put(candidate.roll_no,candidate);
-        adminRepository.save(admin);
+    public void addCandidate(Candidate candidate){
+        candidateRepository.insert(candidate);
     }
 
     public Candidate getCandidateByRoll(String roll_no) {
@@ -79,24 +70,11 @@ public class CandidateService {
                 .orElseThrow(() -> new RuntimeException("No GBM found with roll_no: " + roll_no));
     }
 
-    public Integer add_form(String roll_no_candidate, String form_link){
+    public void add_form(String roll_no_candidate, String form_link){
         Candidate candidate = getCandidateByRoll(roll_no_candidate);
         if(candidate.is_activated == true){
-            List<Integer> value_set = new ArrayList<Integer>();
-            for (Map.Entry<String,Integer> entry : candidate.form_link.entrySet()){
-                value_set.add(entry.getValue());
-            }
-            Integer new_pk = 0;
-            for ( int i =0; i<value_set.size();++i){
-                if(value_set.get(i)>new_pk){
-                    new_pk = value_set.get(i);
-                }
-            }
-            new_pk = new_pk +1;
-            candidate.form_link.put(form_link,new_pk);
+            candidate.form_link.add(form_link);
             candidateRepository.save(candidate);
-            return new_pk;
-            // return 1;
         }
         else{
             throw new RuntimeException();
@@ -113,13 +91,53 @@ public class CandidateService {
         }
     }
 
-    public ArrayList<String> view_forms(String roll_no){
+    public List<String> view_forms(String roll_no){
         Candidate candidate = getCandidateByRoll(roll_no);
         if(candidate.is_activated == true){
-            Set<String> key_set = candidate.form_link.keySet();
-            return new ArrayList<String>(key_set);
+            return candidate.form_link;
         }
         else{
+            throw new RuntimeException();
+        }
+    }
+
+    public CandidateInfo getCandidateInfo(String roll_no){
+
+        try{
+            Candidate candidate = getCandidateByRoll(roll_no);
+            List<String> Proposer_names = new ArrayList<>();
+            List<String> Seconder_names = new ArrayList<>();
+            List<String> Campaigner_names = new ArrayList<>();
+
+            for(String seconder: candidate.Seconders){
+                GBM gbm = getGBMByRoll(seconder);
+                Seconder_names.add(gbm.name);
+            }
+
+            for(String proposer: candidate.Proposers){
+                GBM gbm = getGBMByRoll(proposer);
+                Proposer_names.add(gbm.name);
+            }
+
+            for(String campaigner: candidate.Campaigners){
+                GBM gbm = getGBMByRoll(campaigner);
+                Campaigner_names.add(gbm.name);
+            }
+            
+            CandidateInfo candidateInfo = new CandidateInfo(candidate.name, 
+                                                            candidate.roll_no, 
+                                                            Campaigner_names, 
+                                                            Proposer_names, 
+                                                            Seconder_names, 
+                                                            candidate.manifesto_link, 
+                                                            candidate.video_links, 
+                                                            candidate.poster_link, 
+                                                            candidate.post, 
+                                                            candidate.form_link);
+
+            return candidateInfo;
+        }
+        catch(Exception E){
             throw new RuntimeException();
         }
     }
@@ -132,11 +150,28 @@ public class CandidateService {
             Map<String, String> candidateInfo = new HashMap<String, String>();
             candidateInfo.put("name", candidate.name);
             candidateInfo.put("post", candidate.post);
-            candidateInfo.put("email", candidate.email);
+            candidateInfo.put("roll_no", candidate.roll_no);
 
             BasicInfo.add(candidateInfo);
         }
         return BasicInfo;
+    }
+
+    public List<Map<String, String>> viewAllForms(){
+        List<Candidate> allCandidates = candidateRepository.findAll();
+        List< Map<String, String> > forms = new ArrayList< Map<String, String> >();
+
+        for(Candidate candidate: allCandidates){
+            for(String link: candidate.form_link){
+                Map<String, String> form_data = new HashMap<>();
+                form_data.put("name", candidate.name);
+                form_data.put("roll_no", candidate.roll_no);
+                form_data.put("link", link);
+                forms.add(form_data);
+            }
+        }
+
+        return forms;
     }
 
     public void add_video(String roll_no, String link){
@@ -150,13 +185,33 @@ public class CandidateService {
         }
     }
 
+    public List<String> view_videos(String roll_no) {
+        Candidate candidate = getCandidateByRoll(roll_no);
+        if(candidate.is_activated == true) {
+            return candidate.video_links;
+        }
+        else {
+            throw new RuntimeException();
+        }
+    }
+
     public void add_poster(String roll_no, String link){
         Candidate candidate = getCandidateByRoll(roll_no);
         if(candidate.is_activated == true){
-            candidate.poster_links.add(link);
+            candidate.poster_link = link;
             candidateRepository.save(candidate);
         }
         else{
+            throw new RuntimeException();
+        }
+    }
+
+    public String view_poster(String roll_no) {
+        Candidate candidate = getCandidateByRoll(roll_no);
+        if(candidate.is_activated == true) {
+            return candidate.poster_link;
+        }
+        else {
             throw new RuntimeException();
         }
     }

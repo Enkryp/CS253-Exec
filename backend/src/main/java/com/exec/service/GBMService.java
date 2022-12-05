@@ -44,6 +44,13 @@ public class GBMService {
         gbmRepository.save(gbm);
     }
 
+    public void setCampaignerOf(String gbm_roll, String candidate_roll)
+    {
+        GBM gbm = getGBMByRoll(gbm_roll);
+        gbm.campaigner_of = candidate_roll;
+        gbmRepository.save(gbm);
+    }
+
     public void addCampainRequests(String roll_no_gbm, String roll_no_candidate){
 
         GBM gbm = getGBMByRoll(roll_no_gbm);
@@ -78,12 +85,12 @@ public class GBMService {
 
         GBM gbm = getGBMByRoll(roll_no_gbm);
 
-        if(!gbm.is_campaigner || gbm.campaign_requests.contains(roll_no_candidate)){
+        if(gbm.is_campaigner == false && gbm.campaign_requests.contains(roll_no_candidate)){
+            candidateService.addCampaigner(roll_no_candidate, roll_no_gbm);
             gbm.campaign_requests.clear();
-            setIsCampaigner(roll_no_gbm);
+            gbm.is_campaigner = true;
             gbm.campaigner_of = roll_no_candidate;
             gbmRepository.save(gbm);
-            candidateService.addCampaigner(roll_no_candidate, roll_no_gbm);
         }else{
             throw new RuntimeException();
         }
@@ -117,11 +124,7 @@ public class GBMService {
     
     public List<String> get_form_link(String roll_no){
         Candidate candidate = candidateService.getCandidateByRoll(roll_no);
-        List<String> forms = new ArrayList<String>();
-        for (Map.Entry<String,Integer> entry : candidate.form_link.entrySet()){
-            forms.add(entry.getKey());
-        }
-        return forms;
+        return candidate.form_link;
     }
 
     public String get_name(String roll_no){
@@ -136,7 +139,17 @@ public class GBMService {
 
     public void set_applied_for_candidature(String roll_no){
         GBM gbm = getGBMByRoll(roll_no);
+        if(gbm.applied_for_candidature == true)
+            throw new RuntimeException("Already applied for candidature");
         gbm.applied_for_candidature = true;
+        gbmRepository.save(gbm);
+    }
+
+    public void remove_applied_for_candidature(String roll_no){
+        GBM gbm = getGBMByRoll(roll_no);
+        if(gbm.applied_for_candidature == false)
+            throw new RuntimeException("Did not apply for candidature");
+        gbm.applied_for_candidature = false;
         gbmRepository.save(gbm);
     }
    

@@ -18,13 +18,18 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import RoutingComponent from './Router';
+import store from "store";
+import { Provider } from "react-redux";
+
 
 import "assets/plugins/nucleo/css/nucleo.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "assets/scss/argon-dashboard-react.scss";
 
+
 ReactDOM.render(
+  <Provider store={store}>
     <RoutingComponent />
-  ,
+  </Provider>,
   document.getElementById("root")
 );

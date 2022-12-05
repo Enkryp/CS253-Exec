@@ -70,6 +70,12 @@ const CandidateLoginNavbar = () => {
                 </NavLink>
               </NavItem>
               <NavItem>
+                <NavLink className="nav-link-icon" to="/admin/login" tag={Link}>
+                  <i className="ni ni-planet" />
+                  <span className="nav-link-inner--text">Admin_Login</span>
+                </NavLink>
+              </NavItem>
+              <NavItem>
                 <NavLink className="nav-link-icon" to="/candidates" tag={Link}>
                   <i className="ni ni-planet" />
                   <span className="nav-link-inner--text">Dashboard</span>

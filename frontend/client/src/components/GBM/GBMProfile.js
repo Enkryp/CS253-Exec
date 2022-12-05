@@ -1,5 +1,5 @@
 // reactstrap components
-import React,{useState} from 'react';
+import React,{useState, useEffect} from 'react';
 import {
   Button,
   Card,
@@ -14,12 +14,33 @@ import {
 } from "reactstrap";
 // core components
 import UserHeader from "components/Headers/UserHeader.js";
+import axios from 'axios';
+
 //import {Auth } from '../../context/AuthContext';
 
 function Profile (props){
 
   // const {CurrentUser} =Auth();
-  const[disable,setDisable] =useState(true); 
+  const [disable,setDisable] =useState(true); 
+  const [profile,setProfile] = useState({});
+  const base_url = "http://localhost:8080/";
+
+  useEffect(() => {
+    async function fetchData() {
+      
+      axios.defaults.withCredentials = true;
+      await axios
+        .get(base_url + "api/GBM/profile")
+        .then((response) => {
+          setProfile(response.data);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+    fetchData();
+  }, []);
+
   return (
     <>
       <UserHeader />
@@ -48,13 +69,9 @@ function Profile (props){
                 <div className="text-center">
                   <h3>
                   </h3>
-                  <div className="h5 font-weight-300">
-                    <i className="ni location_pin mr-2" />
-                    CSE,Btech
-                  </div>
                   <div className="h5 mt-4">
                     <i className="ni business_briefcase-24 mr-2" />
-                   Student
+                   General Body Member
                   </div>
                   <div>
                     <i className="ni education_hat mr-2" />
@@ -80,74 +97,78 @@ function Profile (props){
                   </h6>
                   <div className="pl-lg-4">
                     <Row>
-                      <Col lg="6">
+                      <Col md="12">
                         <FormGroup>
                           <label
                             className="form-control-label"
                             htmlFor="input-username"
                           >
-                            Username
+                            Name
                           </label>
                           <Input
                             className="form-control-alternative"
                             id="input-username"
-                            placeholder="Username"
+                            placeholder="Name"
+                            value={profile.name}
                             type="text"
                             disabled={disable}
                           /> 
                         </FormGroup>
                       </Col>
+                      </Row>
+                      <Row>
                       <Col lg="6">
                         <FormGroup>
                           <label
                             className="form-control-label"
                             htmlFor="input-email"
                           >
-                            Email address
+                            RollNo
                           </label>
                           <Input
                             className="form-control-alternative"
-                            id="input-email"
-                            placeholder="jesse@example.com"
-                            type="email"
+                            id="input-rollno"
+                            placeholder="Roll no."
+                            value={profile.roll_no}
+                            type="text"
                             disabled ={disable}
                           />
                         </FormGroup>
                       </Col>
-                    </Row>
-                    <Row>
                       <Col lg="6">
                         <FormGroup>
                           <label
                             className="form-control-label"
                             htmlFor="input-first-name"
                           >
-                            Program
+                            Email
                           </label>
                           <Input
                             className="form-control-alternative"
-                            defaultValue="B-Tech"
-                            id="input-first-name"
-                            placeholder="First name"
-                            type="text"
+                            id="email"
+                            placeholder="Email"
+                            type="email"
+                            value={profile.email}
                             disabled={disable}
                           />
                         </FormGroup>
                       </Col>
-                      <Col lg="6">
+                    </Row>
+                    <Row>
+                      <Col md="12">
                         <FormGroup>
                           <label
                             className="form-control-label"
                             htmlFor="input-last-name"
                           >
-                            Department
+                            In Team of
                           </label>
                           <Input
                             className="form-control-alternative"
-                            defaultValue="CSE"
-                            id="input-last-name"
-                            placeholder="Last name"
+                            id="team"
+                            placeholder="Team"
                             type="text"
+                            value={profile.team}
                             disabled={disable}
                           />
                         </FormGroup>
@@ -156,7 +177,7 @@ function Profile (props){
                   </div>
                   <hr className="my-4" />
                   {/* Address */}
-                  <h6 className="heading-small text-muted mb-4">
+                  {/* <h6 className="heading-small text-muted mb-4">
                     Other Additional Info
                   </h6>
                   <div className="pl-lg-4">
@@ -215,15 +236,7 @@ function Profile (props){
                         </FormGroup>
                       </Col>
                     </Row>
-                    <Button
-                    color="info"
-                    href="#pablo"
-                    onClick={(e) => e.preventDefault()}
-                    style={{float : "right"}}
-                  >
-                    Edit profile
-                  </Button>
-                  </div>
+                  </div> */}
                 </Form>
               </CardBody>
             </Card>

@@ -19,20 +19,8 @@ import { Link,useHistory} from "react-router-dom";
 // import {Auth} from '../../context/AuthContext';
 // reactstrap components
 import {
-  DropdownMenu,
-  DropdownItem,
-  UncontrolledDropdown,
-  DropdownToggle,
-  Form,
-  FormGroup,
-  InputGroupAddon,
-  InputGroupText,
-  Input,
-  InputGroup,
   Navbar,
-  Nav,
   Container,
-  Media,
 } from "reactstrap";
 
 function DashboardNavbar (props) {
@@ -49,7 +37,7 @@ function DashboardNavbar (props) {
           <Link
             className="h4 mb-0 text-white text-uppercase d-none d-lg-inline-block "
           >
-            <h1>CANDIDATES</h1>
+            {/* <h1>CANDIDATES</h1> */}
           </Link>
         </Container>
       </Navbar>

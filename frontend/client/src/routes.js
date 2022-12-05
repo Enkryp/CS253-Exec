@@ -16,13 +16,7 @@
 
 */
 import Index from "views/Index.js";
-import Profile from "views/examples/Profile.js";
-import EventAddForm from "views/examples/EventAddForm.js";
-import Login from './views/examples/Login';
-import Tables from './views/examples/Tables';
-import Register from "views/examples/Register";
-import MainDashboard from "components/Dashboard/MainDashboard";
-
+import CandidateInfo from "layouts/CandidateInfo";
 var routes = [
   {
     path: "/candidates",
@@ -31,47 +25,5 @@ var routes = [
     component: Index,
     layout: "/admin",
   },
-  {
-    path: "/about-us",
-    name: "About Us",
-    icon: "ni ni-circle-08 text-pink",
-    component: Index,
-    layout: "/admin",
-  },
-  {
-    path: "/admin/dashboard",
-    name: "Admin Dashboard",
-    icon: "ni ni-single-02 text-yellow",
-    component: MainDashboard,
-    layout: "/ouradmin",
-  },
-  {
-    path: "/add-event",
-    name: "Add New Event",
-    icon: "ni ni-single-02 text-yellow",
-    component: EventAddForm,
-    layout: "/ouradmin",
-  },
-   {
-    path: "/add-event",
-    name: "Add New Event",
-    icon: "ni ni-single-02 text-yellow",
-    component: EventAddForm,
-    layout: "/ouradmin",
-  },
-  {
-    path: "/add-event",
-    name: "Add New Event",
-    icon: "ni ni-single-02 text-yellow",
-    component: EventAddForm,
-    layout: "/ouradmin",
-  },
-  {
-    path: "/candidate/login",
-    name: "Admin Login Page",
-    icon: "ni ni-single-02 text-yellow",
-    component: Login,
-    layout: "/auth",
-  }
 ];
 export default routes;

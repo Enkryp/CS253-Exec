@@ -3,10 +3,13 @@ package com.exec.controller;
 import com.exec.EmailServiceImpl;
 import com.exec.Utils;
 import com.exec.model.Candidate;
+import com.exec.model.CandidateInfo;
 import com.exec.model.GBM;
 import com.exec.service.CandidateService;
 import com.exec.service.GBMService;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpSession;
 
@@ -80,92 +83,6 @@ public class CandidateController {
         }
     }
 
-    @PostMapping("/activate")
-    public ResponseEntity<Object> activateCandidate(@RequestBody Map<String, String> body, HttpSession session) {
-        try 
-        {
-            Map<String, String> response = new HashMap<String, String>();
-            if(utils.isLoggedIn(session) != null || utils.isLoggedInUnverified(session) != null){
-                response.put("message", "User already logged in.");
-                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
-            }
-
-            Candidate candidate = candidateservice.getCandidateByRoll(body.get("roll_no"));
-            if(candidate.is_activated == true)
-            {
-                response.put("message", "Student already signed up");
-                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
-            }
-            else{
-                String otp = utils.otpGenerator();
-                candidateservice.setOtp(body.get("roll_no"), otp);
-                emailSender.sendOTPMessage(candidate.email, candidate.name, otp);
-                session.setAttribute("unverified_roll_no", body.get("roll_no"));
-                session.setAttribute("unverified_access_level", "Candidate");
-                return ResponseEntity.status(HttpStatus.OK).build();
-            }
-        }
-        catch (Exception E) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
-
-    // //TODO: take a look at the real working of the EC ki seconders/proposers add kab hote hain
-    // @PostMapping("/addSeconder")
-    // public ResponseEntity<Object> add_Seconder(@RequestBody Map<String,String> body){
-    //     try {
-    //         candidateservice.addSeconder(body.get("candidate_roll_no"), body.get("seconder_roll_no"));
-    //         return ResponseEntity.status(HttpStatus.OK).build();
-    //     }
-    //     catch(Exception E){
-    //         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-    //     }
-    // }
-
-    // //TODO: same as in that of the seconder
-    // @PostMapping("/addProposer")
-    // public ResponseEntity<Object> add_Proposer(@RequestBody Map<String,String> body){
-    //     try {
-    //         candidateservice.addProposer(body.get("candidate_roll_no"), body.get("seconder_roll_no"));
-    //         return ResponseEntity.status(HttpStatus.OK).build();
-    //     }
-    //     catch(Exception E){
-    //         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-    //     }
-    // }
-     @PostMapping("/requestCampaigner")
-    public ResponseEntity<Object> request_Campaigner(@RequestBody Map<String,String> body, HttpSession session){
-        try {
-            Map<String, String> response = new HashMap<String, String>();
-            String roll_no = utils.isLoggedIn(session);
-            if(roll_no == null || !session.getAttribute("access_level").equals("Candidate")){
-                response.put("message", "No candidate logged in");
-                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
-            }
-
-            GBM requested_gbm;
-            try{
-                requested_gbm = gbmservice.getGBMByRoll(body.get("gbm_roll_no"));
-            }
-            catch(Exception E){
-                response.put("message", "No GBM with this roll no.");
-                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-            }
-
-            if(requested_gbm.is_campaigner){
-                response.put("message", "GBM already a campaigner");
-                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-            }
-            
-            gbmservice.addCampainRequests(requested_gbm.roll_no, roll_no);
-            emailSender.sendCampaignRequestMessage(requested_gbm.email, requested_gbm.name, candidateservice.getCandidateByRoll(roll_no).name);
-            return ResponseEntity.status(HttpStatus.OK).build();
-        }
-        catch(Exception E){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
-
     @PostMapping("/changePassword")
     public ResponseEntity<Object> changePassword(@RequestBody Map<String, String> body, HttpSession session) {
 
@@ -180,16 +97,16 @@ public class CandidateController {
                 response.put("message", "Invalid password change request");
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
-
-            Candidate candidate = candidateservice.getCandidateByRoll(body.get("roll_no"));
+            
+            Candidate candidate = candidateservice.getCandidateByRoll(roll_no);
 
             if(! (candidate.otp).equals(body.get("otp"))){
                 response.put("message", "Invalid OTP");
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
-            
+
             String password = passwordEncoder.encode(body.get("password"));
-            candidateservice.activateCandidate(body.get("roll_no"), password);
+            candidateservice.activateCandidate(roll_no, password);
             gbmservice.removeOtp(roll_no);
             session.removeAttribute("unverified_roll_no");
             session.removeAttribute("unverified_access_level");
@@ -213,8 +130,14 @@ public class CandidateController {
                 response.put("message", "Already logged in");
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
-
-            Candidate candidate = candidateservice.getCandidateByRoll(body.get("roll_no"));
+            Candidate candidate;
+            try{
+                candidate = candidateservice.getCandidateByRoll(body.get("roll_no"));
+            }
+            catch(Exception E){
+                response.put("message", "No candidate with this roll no.");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
             PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
             if(! passwordEncoder.matches(body.get("password"), candidate.password)){
                 response.put("message", "Invalid credentials");
@@ -252,6 +175,45 @@ public class CandidateController {
         }
     }
 
+    @PostMapping("/requestCampaigner")
+    public ResponseEntity<Object> request_Campaigner(@RequestBody Map<String,String> body, HttpSession session){
+        try {
+            Map<String, String> response = new HashMap<String, String>();
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Candidate")){
+                response.put("message", "No candidate logged in");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            GBM requested_gbm;
+            try{
+                requested_gbm = gbmservice.getGBMByRoll(body.get("gbm_roll_no"));
+            }
+            catch(Exception E){
+                response.put("message", "No GBM with this roll no.");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+
+            if(requested_gbm.is_campaigner){
+                response.put("message", "GBM already in a Candidate's team");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+
+            if(requested_gbm.campaign_requests.contains(roll_no)){
+                response.put("message", "GBM already requested");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+            
+            gbmservice.addCampainRequests(requested_gbm.roll_no, roll_no);
+            emailSender.sendCampaignRequestMessage(requested_gbm.email, requested_gbm.name, candidateservice.getCandidateByRoll(roll_no).name);
+            return ResponseEntity.status(HttpStatus.OK).build();
+        }
+        catch(Exception E){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+
     @PostMapping("/addform")
     public ResponseEntity<Object> add_form_link(@RequestBody Map<String, String> body, HttpSession session){
         Map<String,String> response = new HashMap<>();
@@ -261,8 +223,8 @@ public class CandidateController {
                 response.put("message", "Candidate not logged in");
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
-            response.put("pk",Integer.toString(candidateservice.add_form(roll_no, body.get("form_link"))));
-            return new ResponseEntity<Object>(response, HttpStatus.OK);
+            candidateservice.add_form(roll_no, body.get("form_link"));
+            return ResponseEntity.status(HttpStatus.OK).build();
         }
         catch(Exception E){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -278,7 +240,13 @@ public class CandidateController {
                 response.put("message", "Candidate not logged in");
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
-            candidateservice.remove_form(roll_no, body.get("form_link"));
+            try{
+                candidateservice.remove_form(roll_no, body.get("form_link"));
+            }
+            catch(Exception E){
+                response.put("message", "No such form found");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
     
            return ResponseEntity.status(HttpStatus.OK).build();
         }
@@ -288,7 +256,7 @@ public class CandidateController {
     }
 
     @GetMapping("/viewmyforms")
-    public ResponseEntity<Object> view_my_forms(@RequestBody Map<String, String> body, HttpSession session){
+    public ResponseEntity<Object> view_my_forms(HttpSession session){
         Map<String,String> response = new HashMap<>();
         try{
             String roll_no = utils.isLoggedIn(session);
@@ -297,10 +265,14 @@ public class CandidateController {
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
             List <String> forms = candidateservice.view_forms(roll_no); 
+            List<Map<String,String>> form_links = new ArrayList<>();
             for (Integer i = 0; i < forms.size(); ++i){
-                response.put("form" + i.toString(), forms.get(i));
+                Map<String, String> _response = new HashMap<String, String>();
+                _response.put("name", "Form " + i.toString());
+                _response.put("link", forms.get(i));
+                form_links.add(_response);
             }
-            return new ResponseEntity<Object>(response, HttpStatus.OK);
+            return new ResponseEntity<Object>(form_links, HttpStatus.OK);
         }
         catch(Exception E){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -308,7 +280,7 @@ public class CandidateController {
     }
 
     @PostMapping("/addVideos")
-    public ResponseEntity<Object> add_video(@RequestBody List<String> body, HttpSession session){
+    public ResponseEntity<Object> add_video(@RequestBody Map<String, String> body, HttpSession session){
         try {
             Map<String, String> response = new HashMap<String, String>();
             String roll_no = utils.isLoggedIn(session);
@@ -317,9 +289,7 @@ public class CandidateController {
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
 
-            for (String i : body) {
-                candidateservice.add_video(roll_no, i);
-            }
+            candidateservice.add_video(roll_no, body.get("video_link"));
 
             return ResponseEntity.status(HttpStatus.OK).build();
         } catch (Exception e) {
@@ -327,8 +297,33 @@ public class CandidateController {
         }
     }
 
-    @PostMapping("/addPosters")
-    public ResponseEntity<Object> add_poster(@RequestBody List<String> body, HttpSession session){
+    @GetMapping("/viewmyvideos")
+    public ResponseEntity<Object> view_my_videos(HttpSession session) {
+        try {
+            Map<String, String> response = new HashMap<String, String>();
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Candidate")) {
+                response.put("message", "No candidate logged in");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            List<String> videos = candidateservice.view_videos(roll_no);
+            List<Map<String,String>> video_links = new ArrayList<>();
+            for(Integer i = 1; i <= videos.size(); i++) {
+                Map<String, String> _response = new HashMap<String, String>();
+                _response.put("name", "Video " + i.toString());
+                _response.put("link", videos.get(i-1));
+                video_links.add(_response);
+            }
+
+            return new ResponseEntity<Object>(video_links, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PostMapping("/addPoster")
+    public ResponseEntity<Object> add_poster(@RequestBody Map<String,String> body, HttpSession session){
         try {
             Map<String, String> response = new HashMap<String, String>();
             String roll_no = utils.isLoggedIn(session);
@@ -337,13 +332,71 @@ public class CandidateController {
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
 
-            for (String i : body) {
-                candidateservice.add_poster(roll_no, i);
+            Candidate candidate = candidateservice.getCandidateByRoll(roll_no);
+            if(candidate.poster_link != null){
+                response.put("message", "Poster already uploaded");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
+
+            Pattern pattern = Pattern.compile("^(https://drive.google.com/)file/d/([^/]+)/.*$");
+            Matcher matcher = pattern.matcher(body.get("poster_link"));
+
+            if(!matcher.find()){
+                response.put("message", "Not a valid google drive link");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+            String poster_link = body.get("poster_link");
+            poster_link = poster_link.replace("/file/d/", "/uc?export=view&id=")
+                                    .replace("/edit?usp=sharing", "")
+                                    .replace("/view?usp=sharing", "")
+                                    .replace("/view", "")
+                                    .replace("/edit", "");
+
+            candidateservice.add_poster(roll_no, poster_link);
 
             return ResponseEntity.status(HttpStatus.OK).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/viewmyposter")
+    public ResponseEntity<Object> view_my_poster(HttpSession session) {
+        try {
+            Map<String, String> response = new HashMap<String, String>();
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Candidate")) {
+                response.put("message", "No candidate logged in");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            String poster = candidateservice.view_poster(roll_no);
+            response.put("name", "Poster");
+            response.put("link", poster);
+
+            return new ResponseEntity<Object>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<Object> profile(HttpSession session){
+
+        try {
+            Map<String, String> response = new HashMap<String, String>();
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Candidate")) {
+                response.put("message", "No candidate logged in");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            CandidateInfo candidateInfo = candidateservice.getCandidateInfo(roll_no);
+            return  new ResponseEntity<Object>(candidateInfo, HttpStatus.OK);
+        }
+        catch(Exception E)
+        {
+            return new ResponseEntity<Object>(HttpStatus.BAD_REQUEST);
         }
     }
             

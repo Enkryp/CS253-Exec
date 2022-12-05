@@ -219,7 +219,7 @@ function DashboardSidebar (props){
               </NavLink>
             </NavItem>
              <NavItem>
-              <NavLink href="https://docs.google.com/spreadsheets/d/1QU7nV--zUGeRN2wCylVCN2QPFx7hv6xsos7wNzlabD4/edit?usp=sharing" target="_blank">
+              <NavLink href="http://localhost:8080/getPenaltyCsv" target="_blank">
                 <i className="ni ni-ui-04" />
                 Penalty Sheet
               </NavLink>
@@ -240,6 +240,18 @@ function DashboardSidebar (props){
               <NavLink href="/candidate/login">
                 <i className="ni ni-ui-04" />
                 Candidate Login
+              </NavLink>
+            </NavItem>
+            <NavItem>
+              <NavLink href="/candidate/signup">
+                <i className="ni ni-ui-04" />
+                Candidate SignUp
+              </NavLink>
+            </NavItem>
+            <NavItem>
+            <NavLink href="/admin/login">
+                <i className="ni ni-ui-04" />
+                Admin Login
               </NavLink>
             </NavItem>
           </Nav>

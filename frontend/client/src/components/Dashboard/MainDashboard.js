@@ -1,32 +1,44 @@
 // reactstrap components
-import React,{useState} from 'react';
+import React,{useState, useEffect} from 'react';
+import axios from 'axios';
 import {
   Button,
   Card,
   CardBody,
   CardImg,
   CardTitle,
-  CardText,
   Col,
   Row,
   Modal,
   Container
+  
 } from "reactstrap";
-import { Link } from 'react-router-dom';
+import { Link,useHistory } from 'react-router-dom';
 
 function MainDashboard(){
-
+  const history = useHistory();
   const [notificationModal,setNotificationModal]=useState({content:{},visible:false});
-  const [events,setEvents]=useState([{name:"Candidate1",desc:"PRESIDENT, STUDENTS GYMKHANA"},
-                                     {name:"Candidate2",desc:"GENERAL SECRETARY, GAMES AND SPORTS"},
-                                     {name:"Candidate3",desc:"PRESIDENT, STUDENTS GYMKHANA"},
-                                     {name:"Candidate4",desc:"GENERAL SECRETARY, SCIENCE AND TECHNOLOGY"},
-                                     {name:"Candidate5",desc:"GENERAL SECRETARY, MEDIA AND CULTURE"},
-                                     { name: "Candidate6", desc: "GENERAL SECRETARY, UG ACADEMICS AND CAREER" },]);
+  const [candidates, setCandidates] = useState([]);
+  const base_url = "http://localhost:8080/";
   const style = {
     width: "22rem",
-    height: "25rem"
+    height: "32rem"
   };
+
+  useEffect(() => {
+    async function fetchData() {
+      axios.defaults.withCredentials = true;
+      await axios
+        .get(base_url + "viewCandidates")
+        .then((response) => {
+          setCandidates(response.data);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+    fetchData();
+  }, []); 
 
   function toggleModal(value,item) {
     console.log("hello");
@@ -36,15 +48,15 @@ function MainDashboard(){
       setNotificationModal(info)
   };
 
-  function cardClick(){
-    alert("Card is clicked");
+  function cardClick(id) {
+    history.push('/info/'+id);
   }
 
   let contents;
 
   function Split(){
 
-    let copy=events.slice();
+    let copy=candidates.slice();
 
     let arr=[],size=4;
 
@@ -60,11 +72,11 @@ function MainDashboard(){
               <Card style={style} className="card-stats mb-3 mb-xl-0">
                 <CardImg
                   alt="..."
-                  src={"https://demos.creative-tim.com/argon-design-system-pro/assets/img/faces/alejandro-escamilla.jpg"}
+                  src={require("./photo.png").default}
                   top
                 ></CardImg>
                 <CardBody>
-              <a style={{ cursor: 'pointer' }} onClick={()=>cardClick()}>
+              <a style={{ cursor: 'pointer' }} onClick={()=>toggleModal(true,item)}>
               <Row>
                 <div className="col">
                   <CardTitle
@@ -74,7 +86,7 @@ function MainDashboard(){
                     {item.name}
                   </CardTitle>
                   <span className="text-nowrap">
-                    {item.desc}
+                    {item.post}
                   </span>
                 </div>
                 <Col className="col-auto">
@@ -87,7 +99,7 @@ function MainDashboard(){
               </Row>
               </a>
               <p className="mt-3 mb-0 text-muted text-sm">
-              <span className="text-Hex"><Link onClick={() => toggleModal(true,item)}><b><Button color="info">View Candidate Details</Button></b></Link></span>
+              <span className="text-Hex"><Link onClick={() => cardClick(item.roll_no)}><b><Button color="info">View Candidate Details</Button></b></Link></span>
               </p>
             </CardBody>
               </Card>
@@ -123,7 +135,7 @@ function MainDashboard(){
       >
         <div className="modal-header">
           <h6 className="modal-title" id="modal-title-notification">
-            Event Details
+            Candidate Details
           </h6>
           <button
             aria-label="Close"
@@ -159,8 +171,8 @@ function MainDashboard(){
         </div>
       </Modal>
 
-      <div className="header bg-gradient-info pb-8 pt-5 pt-md-8">
-        <Container fluid>
+      <div className="header bg-gradient-info pb-8 pt-1 pt-md-8" style={{ height: "100vh", overflow: "scroll"}}>
+        <Container fluid  >
           <div className="header-body">
             <Split />
           </div>

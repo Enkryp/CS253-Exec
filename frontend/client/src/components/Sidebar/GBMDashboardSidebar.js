@@ -166,6 +166,18 @@ function AdminSidebar (props){
                     Campaign Request
               </NavLink>
             </NavItem>
+            <NavItem>
+              <NavLink href="/gbm/nomination">
+                <i className="ni ni-ui-04" />
+                    Apply for Nomination
+              </NavLink>
+            </NavItem>
+            <NavItem>
+              <NavLink href="/gbm/view-forms">
+                <i className="ni ni-ui-04" />
+                    View Forms
+              </NavLink>
+            </NavItem>
           </Nav>
           <hr className="my-3" />
            <Nav className="mb-md-3" navbar>
@@ -176,15 +188,9 @@ function AdminSidebar (props){
               </NavLink>
             </NavItem>
              <NavItem>
-              <NavLink href="https://docs.google.com/spreadsheets/d/1QU7nV--zUGeRN2wCylVCN2QPFx7hv6xsos7wNzlabD4/edit?usp=sharing" target="_blank">
+              <NavLink href="http://localhost:8080/getPenaltyCsv" target="_blank">
                 <i className="ni ni-ui-04" />
                 Penalty Sheet
-              </NavLink>
-            </NavItem>
-             <NavItem>
-              <NavLink href="">
-                <i className="ni ni-ui-04" />
-                    Your Involvements
               </NavLink>
             </NavItem>
           </Nav>

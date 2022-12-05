@@ -1,4 +1,7 @@
 import { Link,useHistory} from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { logout } from "actions/userActions";
+import axios from 'axios';
 //import {Auth} from '../../context/AuthContext';
 // reactstrap components
 import {
@@ -20,12 +23,30 @@ import {
 
 function GBMDashboardNavbar (props) {
   const history=useHistory();
-  function Logout(){ 
-    history.push('/gbm/login');
+  const base_url = "http://localhost:8080/";
+  const dispatch = useDispatch();
+
+  async function Logout(){ 
+
+    axios.defaults.withCredentials = true;
+    await axios
+      .post(base_url + "api/GBM/logout", {})
+      .then((res) => {
+        if(res.status == 200){
+          dispatch(logout());
+          window.location.href = '/gbm/login';
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        alert("Some error occured! Please try again later.");
+      });
   }
+
   function GBM_Profile(){ 
     history.push('/gbm/profile');
   }
+  
   return (
     <>
       <Navbar className="navbar-top navbar-dark" expand="md" id="navbar-main">

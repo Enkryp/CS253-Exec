@@ -3,6 +3,7 @@ import com.exec.ReportAuth;
 import com.exec.model.Key;
 import com.exec.model.Report;
 import com.exec.service.ReportService;
+
 import com.exec.Utils;
 
 // import java.security.Key;
@@ -30,22 +31,19 @@ public class ReportController {
     }
 
 
-//TODO: Test if working :p
 //Open APIs---- Not to be Authenticated
     @PostMapping("/post/")
     public ResponseEntity<Object> post(@RequestBody Map<String, String> body) {
          
         try{
             Report rep = new Report(body.get("message"), body.get("signed"));
-            if(ReportAuth.check(Reportservice.publicKeys().toString(), body.get("signed"), body.get("message"))){
+            if(ReportAuth.check(Reportservice.getPublicKeys().toString(), body.get("signed"), body.get("message"))){
                 Reportservice.addReport(rep);
                 return ResponseEntity.status(HttpStatus.CREATED).build(); 
             }
             else{
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            // Reportservice.addReport(rep);
-            // return ResponseEntity.status(HttpStatus.CREATED).build(); 
             
         }
         catch(Exception E){
@@ -53,13 +51,11 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/keys/public/")
-    public ResponseEntity<Object> getPublicKeys() {
+    @GetMapping("/keys/public")
+    public ResponseEntity<Object> getAllKeys() {
 
         try{
-            
-
-            List<String> requests = Reportservice.publicKeys();
+            List<Key> requests = Reportservice.getKeys();
             return new ResponseEntity<Object>(requests, HttpStatus.OK);
         }
         catch(Exception E){
@@ -67,18 +63,6 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/keys/private/")
-    public ResponseEntity<Object> getEncryptedPriv(@RequestBody Map<String, String> body) {
-
-        try{
-           
-            Key requests = Reportservice.getPriv(body.get("roll"));
-            return new ResponseEntity<Object>(requests, HttpStatus.OK);
-        }
-        catch(Exception E){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
 
     @GetMapping("/view")
     public ResponseEntity<Object> viewReport( HttpSession session) {
@@ -92,7 +76,7 @@ public class ReportController {
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
 
-            List<Report> requests = Reportservice.getAllReports();
+            List< Map<String, String> > requests = Reportservice.getAllReports();
             return new ResponseEntity<Object>(requests, HttpStatus.OK);
 
             // return ResponseEntity.status(HttpStatus.CREATED).build(); 

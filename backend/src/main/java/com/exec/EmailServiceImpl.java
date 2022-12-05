@@ -15,11 +15,12 @@ public class EmailServiceImpl extends EmailSettings {
 
     @Lazy
     @Autowired
-    private JavaMailSender emailSender = getJavaMailSender();
+    private JavaMailSender emailSender;
     private Map<String, String> template_emails = new HashMap<String, String>();
     private Map<String, String> template_subjects = new HashMap<String, String>();
 
     public EmailServiceImpl() {
+        emailSender = getJavaMailSender();
         template_emails.put( "OTP", "Hey %s,\n\n"
                 + "Please enter the following otp to complete the sign up process\n"
                 + "OTP: %s\n\n"
@@ -36,22 +37,20 @@ public class EmailServiceImpl extends EmailSettings {
                 + "Thank you,\n"
                 + "ExeC Team");
         template_emails.put("Penalty Imposition", "Hey %s,\n\n"
-                + "A penalty of Rs. %s and Level %s has been imposed on you on the account of violation of\n"
-                + " %s of the Code of Conduct.\n"
-                + "Remark- %s.\n"
-                + "Penalty Id: %s\n\n"
+                + "A penalty of %s and %s has been imposed on you on the account of violation of\n"
+                + "%s of the Code of Conduct.\n"
+                + "Remark- %s.\n\n"
                 + "Thank you,\n"
                 + "Exec Team");
         template_emails.put("Candidature Acceptance","Hey %s,\n\n"
-        + "The admin has accepted your candidature request\n"
-        + "You can now signup as candidate.\n\n"
-        + "Thank you,\n"
-        + "Exec Team");
+                + "The admin has accepted your candidature request\n"
+                + "You can now signup as candidate.\n\n"
+                + "Thank you,\n"
+                + "Exec Team");
         template_emails.put("Candidature Rejection","Hey %s,\n\n"
-        + "The admin has rejected your candidature request because of the following reasons\n\n"
-        + "%s\n\n"
-        + "Thank you,\n"
-        + "Exec Team");
+                + "The admin has rejected your candidature request. Please contact the Election Commission for more details.\n\n"
+                + "Thank you,\n"
+                + "Exec Team");
 
         template_subjects.put( "OTP", "Exec - Sign Up OTP");
         template_subjects.put( "Campign Request", "Exec - Campaign Request");
@@ -89,19 +88,19 @@ public class EmailServiceImpl extends EmailSettings {
     }
 
     public void sendPenaltyImpositionMessage(String to, Penalty pen) {
-        String text = String.format(template_emails.get("Penalty Imposition"), pen.name, pen.fine, pen.level, pen.part, pen.remark, pen.id);
+        String text = String.format(template_emails.get("Penalty Imposition"), pen.name, pen.fine, pen.level, pen.part, pen.remark);
         String subject = template_subjects.get("Penalty Imposition");
         sendSimpleMessage(to, subject, text);
     }
 
-    public void sendCandidatureAcceptanceMessage(String to, String GBM) {
-        String text = String.format(template_emails.get("Candidature Acceptance"), GBM);
+    public void sendCandidatureAcceptanceMessage(String to, String name) {
+        String text = String.format(template_emails.get("Candidature Acceptance"), name);
         String subject = template_subjects.get("Candidature Acceptance");
         sendSimpleMessage(to, subject, text);
     }
     
-    public void sendCandidatureRejectionMessage(String to, String GBM,String Description) {
-        String text = String.format(template_emails.get("Candidature Rejection"), GBM, Description);
+    public void sendCandidatureRejectionMessage(String to, String name) {
+        String text = String.format(template_emails.get("Candidature Rejection"), name);
         String subject = template_subjects.get("Candidature Rejection");
         sendSimpleMessage(to, subject, text);
     }

@@ -2,13 +2,18 @@ package com.exec.controller;
 
 import java.util.*;
 
+import com.exec.EmailServiceImpl;
 import com.exec.Utils;
 
 import com.exec.repository.AdminRepository;
 import com.exec.model.Admin;
 import com.exec.model.AspiringCandidate;
+import com.exec.model.GBM;
+import com.exec.model.Penalty;
 import com.exec.service.AdminService;
 import com.exec.service.AspiringCandidateService;
+import com.exec.service.GBMService;
+import com.exec.service.PenaltyService;
 
 import javax.servlet.http.HttpSession;
 
@@ -18,7 +23,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -28,14 +35,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class AdminController {
 
     private final AdminService adminService;
+    private final GBMService gbmService;
     private final AspiringCandidateService aspiringCandidateService;
     private final AdminRepository  adminRepository;
+    private final PenaltyService penaltyService;
     private Utils utils=new Utils();
+    private EmailServiceImpl emailSender= new EmailServiceImpl();
 
-    public AdminController(AdminService adminService,AdminRepository adminRepository, AspiringCandidateService aspiringCandidateService) {
+    public AdminController(AdminService adminService,AdminRepository adminRepository, AspiringCandidateService aspiringCandidateService, GBMService gbmService, PenaltyService penaltyService) {
         this.adminService=adminService;
         this.adminRepository=adminRepository;
         this.aspiringCandidateService = aspiringCandidateService;
+        this.gbmService = gbmService;
+        this.penaltyService = penaltyService;
     }
 
 
@@ -157,65 +169,6 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
-
-    @GetMapping("/viewCandidateRequests")
-    public ResponseEntity<Object> getCampaignRequests(HttpSession session) {
-
-        try{
-            String roll_no = utils.isLoggedIn(session);
-            Map<String,String> response = new HashMap<>();
-
-            if(roll_no == null || !session.getAttribute("access_level").equals("Admin"))
-            {
-                response.put("message", "Admin access required");
-                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
-            }
-
-            List<Map<String, String>> requests = adminService.viewCandidateRequests();
-            return new ResponseEntity<Object>(requests, HttpStatus.OK);
-        }
-        catch(Exception E){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
-    
-    @PostMapping("/acceptCandidate")
-    public ResponseEntity<Object> acceptCandidate(@RequestBody Map<String,String> body,HttpSession session) {
-        Map<String,String> response=new HashMap<>();
-        try{
-            String roll_no=utils.isLoggedIn(session);
-            if( roll_no==null || !session.getAttribute("access_level").equals("Admin"))
-            {
-                response.put("message", "Invalid acceptance request");
-                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
-            }
-    
-            adminService.addCandidate(body.get("roll_no"));
-            return ResponseEntity.status(HttpStatus.OK).build();
-        }
-        catch(Exception E){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
-
-    @PostMapping("/rejectCandidate")
-    public ResponseEntity<Object> rejectCandidate(@RequestBody Map<String,String> body,HttpSession session) {
-        Map<String,String> response=new HashMap<>();
-        try{
-            String roll_no=utils.isLoggedIn(session);
-            if( roll_no==null || !session.getAttribute("access_level").equals("Admin"))
-            {
-                response.put("message", "Invalid rejection request");
-                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
-            }
-    
-            adminService.rejectCandidate(body.get("roll_no"),body.get("description"));
-            return ResponseEntity.status(HttpStatus.OK).build();
-        }
-        catch(Exception E){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } 
-    }
     
     @PostMapping("/addAnnouncement")
     public ResponseEntity<Object> addAnnouncement(@RequestBody Map<String, String> body, HttpSession session){
@@ -290,8 +243,92 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/viewNomination")
+    public ResponseEntity<Object> view_nomination(@RequestParam(value = "roll_no") String roll_no_candidate, HttpSession session){
+
+        Map<String, String> response = new HashMap<>();
+        try{
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Admin")){
+                response.put("message", "No Admin login found");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+            
+            AspiringCandidate aspiringCandidate;
+            try{
+                aspiringCandidate = aspiringCandidateService.getAspiringCandidateByRoll(roll_no_candidate);
+            }
+            catch(Exception E){
+                response.put("message", "No such candidate found");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+
+            return new ResponseEntity<Object>(aspiringCandidate, HttpStatus.OK);
+        }
+        catch(Exception E){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
     @PostMapping("/rejectNomination")
     public ResponseEntity<Object> reject_nomination(@RequestBody Map<String, String> body, HttpSession session){
+        Map<String,String> response = new HashMap<>();
+        try{
+            String roll_no = utils.isLoggedIn(session);
+            GBM gbm;
+            if(roll_no == null || !session.getAttribute("access_level").equals("Admin")){
+                response.put("message", "No Admin login found");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            try{
+                gbm = gbmService.getGBMByRoll(body.get("roll_no"));
+                aspiringCandidateService.deleteCandidature(body.get("roll_no"));
+                gbmService.remove_applied_for_candidature(body.get("roll_no"));
+            }
+            catch(Exception E)
+            {
+                response.put("message", "No such nomination found");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+            emailSender.sendCandidatureRejectionMessage(gbm.email, gbm.name);
+            return ResponseEntity.status(HttpStatus.OK).build();
+        }
+        catch(Exception E){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PostMapping("/acceptNomination")
+    public ResponseEntity<Object> accept_nomination(@RequestBody Map<String, String> body, HttpSession session){
+        Map<String,String> response = new HashMap<>();
+        try{
+            String roll_no = utils.isLoggedIn(session);
+            GBM gbm;
+            if(roll_no == null || !session.getAttribute("access_level").equals("Admin")){
+                response.put("message", "No Admin login found");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+
+            try{
+                gbm = gbmService.getGBMByRoll(body.get("roll_no"));
+                aspiringCandidateService.acceptCandidature(body.get("roll_no"), gbm.name, gbm.email);
+            }
+            catch(Exception E)
+            {
+                response.put("message", "No such nomination found");
+                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+            }
+            emailSender.sendCandidatureAcceptanceMessage(gbm.email, gbm.name);
+            return ResponseEntity.status(HttpStatus.OK).build();
+        }
+        catch(Exception E){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PostMapping("/addPenalty")
+    public ResponseEntity<Object> add_penalty(@RequestBody Map<String, String> body, HttpSession session){
         Map<String,String> response = new HashMap<>();
         try{
             String roll_no = utils.isLoggedIn(session);
@@ -299,14 +336,20 @@ public class AdminController {
                 response.put("message", "No Admin login found");
                 return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
             }
-
             try{
-                aspiringCandidateService.deleteCandidature(body.get("roll_no"));
+                Penalty penalty;
+                GBM gbm = gbmService.getGBMByRoll(body.get("roll_no"));
+                if(body.containsKey("remark"))
+                    penalty = new Penalty(body.get("role"), gbm.name, body.get("roll_no"), body.get("fine"), body.get("level"), body.get("part"), body.get("remark"));
+                else
+                    penalty = new Penalty(body.get("role"), gbm.name, body.get("roll_no"), body.get("fine"), body.get("level"), body.get("part"), "");
+                penaltyService.addPenalty(penalty);
+                emailSender.sendPenaltyImpositionMessage(gbm.email, penalty);
             }
             catch(Exception E)
             {
-                response.put("message", "No such nomination found");
-                return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+                response.put("message", "No such General Body Member with this roll no.");
+                return new ResponseEntity<Object>(HttpStatus.BAD_REQUEST);
             }
             return ResponseEntity.status(HttpStatus.OK).build();
         }
@@ -314,5 +357,64 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
+
+    @PostMapping("/removePenalty")
+    public ResponseEntity<Object> remove_penalty(@RequestBody Map<String, String> body, HttpSession session){
+        Map<String,String> response = new HashMap<>();
+        try{
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Admin")){
+                response.put("message", "No Admin login found");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+            try{
+                penaltyService.removePenalty(body.get("penalty_id"));
+            }
+            catch(Exception E)
+            {
+                response.put("message", "No penalty with this penalty_id found");
+                return new ResponseEntity<Object>(HttpStatus.BAD_REQUEST);
+            }
+            return ResponseEntity.status(HttpStatus.OK).build();
+        }
+        catch(Exception E){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/viewAllPenalties")
+    public ResponseEntity<Object> view_all_penalties(HttpSession session){
+        Map<String, String> response = new HashMap<>();
+        try{
+            String roll_no = utils.isLoggedIn(session);
+            if(roll_no == null || !session.getAttribute("access_level").equals("Admin")){
+                response.put("message", "No Admin login found");
+                return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+            }
+            List<Penalty> penalties = penaltyService.getAllPenalties();
+            return new ResponseEntity<Object>(penalties, HttpStatus.OK);
+        }
+        catch(Exception E){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+    //WARNING: DO NOT UNCOMMENT THE UNDERLYING PORTION
+
+    // @PostMapping("/populate")
+    // public ResponseEntity<Object> populate(HttpSession session){
+    //     Map<String,String> response = new HashMap<>();
+    //     try{
+    //         String roll_no = utils.isLoggedIn(session);
+    //         if(roll_no == null || !session.getAttribute("access_level").equals("Admin")){
+    //             response.put("message", "No Admin login found");
+    //             return new ResponseEntity<Object>(response, HttpStatus.UNAUTHORIZED);
+    //         }
+    //         adminService.populate();
+    //         return ResponseEntity.status(HttpStatus.OK).build();
+    //     }
+    //     catch(Exception E){
+    //         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    //     }
+    // }
 
 }
